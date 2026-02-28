@@ -1,6 +1,8 @@
 """Playwright browser lifecycle management."""
 
-from playwright.async_api import async_playwright, Browser, BrowserContext, Page
+from pathlib import Path
+
+from playwright.async_api import async_playwright, BrowserContext, Page
 
 from config import Config
 
@@ -9,7 +11,6 @@ class BrowserController:
     def __init__(self, config: Config):
         self.config = config
         self._pw = None
-        self.browser: Browser = None
         self.context: BrowserContext = None
         self.page: Page = None
 
@@ -19,17 +20,30 @@ class BrowserController:
         self.page = new_page
         # Bring it to front once it has loaded enough to have a URL
         new_page.once("domcontentloaded", lambda: new_page.bring_to_front())
+        # Revert focus when this tab closes
+        new_page.on("close", lambda _: self._revert_page())
+
+    def _revert_page(self) -> None:
+        """Called when a tab closes; switch self.page to the last remaining open tab."""
+        open_pages = self.context.pages
+        if open_pages and self.page not in open_pages:
+            self.page = open_pages[-1]
+            print(f"[browser] Window closed — now watching: {self.page.url}")
 
     async def start(self, url: str) -> None:
         self._pw = await async_playwright().start()
-        self.browser = await self._pw.chromium.launch(
+
+        profile_dir = Path(self.config.browser_profile_dir).expanduser()
+        profile_dir.mkdir(parents=True, exist_ok=True)
+        print(f"[browser] Using profile: {profile_dir}")
+
+        self.context = await self._pw.chromium.launch_persistent_context(
+            user_data_dir=str(profile_dir),
             headless=self.config.headless,
             args=[
                 "--autoplay-policy=no-user-gesture-required",
                 "--disable-blink-features=AutomationControlled",
             ],
-        )
-        self.context = await self.browser.new_context(
             viewport={
                 "width": self.config.browser_viewport_width,
                 "height": self.config.browser_viewport_height,
@@ -38,7 +52,8 @@ class BrowserController:
         # Track any new windows/tabs opened by the training platform
         self.context.on("page", self._on_new_page)
 
-        self.page = await self.context.new_page()
+        # Reuse the existing tab from a previous session if present
+        self.page = self.context.pages[0] if self.context.pages else await self.context.new_page()
         print(f"[browser] Navigating to {url}")
         await self.page.goto(url, wait_until="domcontentloaded")
         # Give dynamic content a moment to settle
@@ -52,7 +67,7 @@ class BrowserController:
         await self.page.bring_to_front()
 
     async def stop(self) -> None:
-        if self.browser:
-            await self.browser.close()
+        if self.context:
+            await self.context.close()
         if self._pw:
             await self._pw.stop()

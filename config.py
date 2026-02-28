@@ -13,6 +13,7 @@ class Config:
     headless: bool = False
     browser_viewport_width: int = 1280
     browser_viewport_height: int = 800
+    browser_profile_dir: str = ".browser-profile"  # persists cookies/SSO across runs
 
     # Content capture
     screenshot_interval: float = 3.0     # seconds between frame captures
@@ -21,7 +22,7 @@ class Config:
     # Audio (on by default, disable with --no-audio)
     use_audio: bool = True
     whisper_model_size: str = "large-v3"
-    audio_chunk_seconds: int = 30
+    audio_chunk_seconds: int = 8
 
     # Context / accumulation
     compress_every_n_frames: int = 10    # compress older frames after N new ones

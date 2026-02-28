@@ -24,6 +24,8 @@ async def capture_content_frame(
     Returns the base64 of the captured frame (for duplicate detection next round).
     """
     b64 = await capture_base64_jpeg(page)
+    if b64 is None:
+        return last_b64  # Page unavailable (tab closed/navigated away)
 
     if is_duplicate_frame(b64, last_b64):
         return last_b64  # Nothing new to analyze
@@ -34,7 +36,7 @@ async def capture_content_frame(
     description = await loop.run_in_executor(
         None, vlm.describe_frame, b64, context_summary
     )
-    print(f"[watcher] Frame described: {description[:120]}...")
+    print(f"\n[watcher] Frame {accumulator.frame_count + 1}:\n{description}\n")
     await accumulator.add_frame(description, loop)
 
     return b64

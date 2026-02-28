@@ -5,10 +5,15 @@ import base64
 from playwright.async_api import Page
 
 
-async def capture_base64_jpeg(page: Page, quality: int = 75) -> str:
-    """Return a base64-encoded JPEG screenshot of the current viewport."""
-    raw = await page.screenshot(type="jpeg", quality=quality, full_page=False)
-    return base64.b64encode(raw).decode("utf-8")
+async def capture_base64_jpeg(page: Page, quality: int = 75) -> str | None:
+    """Return a base64-encoded JPEG screenshot, or None if the page is unavailable."""
+    try:
+        raw = await page.screenshot(type="jpeg", quality=quality, full_page=False)
+        return base64.b64encode(raw).decode("utf-8")
+    except Exception as e:
+        if "closed" in str(e).lower() or "TargetClosed" in type(e).__name__:
+            return None
+        raise
 
 
 def is_duplicate_frame(b64_new: str, b64_prev: str | None, tolerance: int = 200) -> bool:

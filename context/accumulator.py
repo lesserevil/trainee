@@ -39,6 +39,7 @@ class ContextAccumulator:
         )
         self._rolling_summary = new_summary
         self._recent_frames = []
+        print(f"\n[context] Knowledge base updated:\n{new_summary}\n")
 
     def get_summary(self, max_recent: int = 5, max_transcripts: int = 3) -> str:
         """Return the full accumulated context as a formatted string."""

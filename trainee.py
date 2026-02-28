@@ -111,6 +111,10 @@ async def run(url: str, config: Config) -> None:
                     continue
 
                 b64 = await capture_base64_jpeg(page, config.screenshot_quality)
+                if b64 is None:
+                    print("[trainee] Could not screenshot quiz page — waiting...")
+                    await asyncio.sleep(config.screenshot_interval)
+                    continue
                 solved = await solve_and_click(
                     frame, quiz_data, accumulator, vlm, b64, loop
                 )
@@ -143,7 +147,7 @@ async def run(url: str, config: Config) -> None:
                 last_b64 = None  # Reset duplicate detection after navigation
                 await asyncio.sleep(1.5)
             else:
-                # Nothing to advance — wait and re-check (content may be loading)
+                print("[trainee] No navigation button found — waiting...")
                 await asyncio.sleep(config.screenshot_interval)
 
     except KeyboardInterrupt:

@@ -37,5 +37,5 @@ class Transcriber:
         )
         text = " ".join(seg.text.strip() for seg in segments)
         if text:
-            print(f"[transcriber] Transcript: {text[:100]}...")
+            print(f"\n[audio] {text}\n")
         return text

@@ -19,6 +19,8 @@ dependencies = [
 mlx = [
     "mlx-vlm>=0.1.0",
     "transformers>=4.45.0",  # 4.50+ has a NoneType bug when torchvision absent; patched in model/vlm.py at runtime
+    "torch>=2.0",            # silences "PyTorch was not found" warning from transformers; MPS support included on macOS
+    "torchvision",           # required by transformers' AutoVideoProcessor for Qwen2-VL
 ]
 # NVIDIA CUDA backend
 vllm = [
