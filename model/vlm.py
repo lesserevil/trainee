@@ -26,6 +26,7 @@ import platform
 from model.prompts import (
     CONTEXT_COMPRESSION_PROMPT,
     FRAME_DESCRIPTION_PROMPT,
+    FREE_TEXT_ANSWER_PROMPT,
     QUIZ_ANSWER_PROMPT,
 )
 
@@ -94,6 +95,22 @@ class _VLLMBackend:
             context=context or "No course content captured yet.",
             question=question,
             options=options_text,
+        )
+        return self._chat([{
+            "role": "user",
+            "content": [
+                {"type": "image_url",
+                 "image_url": {"url": f"data:image/jpeg;base64,{base64_jpeg}"}},
+                {"type": "text", "text": prompt},
+            ],
+        }])
+
+    def answer_free_text(
+        self, base64_jpeg: str, question: str, context: str
+    ) -> str:
+        prompt = FREE_TEXT_ANSWER_PROMPT.format(
+            context=context or "No course content captured yet.",
+            question=question,
         )
         return self._chat([{
             "role": "user",
@@ -236,6 +253,16 @@ class _MLXBackend:
             context=context or "No course content captured yet.",
             question=question,
             options=options_text,
+        )
+        image = self._b64_to_pil(base64_jpeg)
+        return self._generate(prompt, image)
+
+    def answer_free_text(
+        self, base64_jpeg: str, question: str, context: str
+    ) -> str:
+        prompt = FREE_TEXT_ANSWER_PROMPT.format(
+            context=context or "No course content captured yet.",
+            question=question,
         )
         image = self._b64_to_pil(base64_jpeg)
         return self._generate(prompt, image)

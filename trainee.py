@@ -97,9 +97,10 @@ async def run(url: str, config: Config) -> None:
             # --- Check for quiz ---
             quiz_result = await detect_quiz(page)
             if quiz_result:
-                print(f"\n[trainee] Quiz detected ({quiz_result['selector']})")
+                question_type = quiz_result.get("questionType", "multiple_choice")
+                print(f"\n[trainee] Quiz detected ({quiz_result['selector']}, type={question_type})")
                 frame = quiz_result["frame"]
-                quiz_data = await extract_quiz(frame)
+                quiz_data = await extract_quiz(frame, question_type)
 
                 question = quiz_data.get("questionText", "")
                 options = quiz_data.get("options", [])

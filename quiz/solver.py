@@ -22,6 +22,9 @@ async def solve_and_click(
 
     Returns True if answers were successfully clicked.
     """
+    if quiz_data.get("questionType") == "free_text":
+        return await _solve_free_text(frame, quiz_data, accumulator, vlm, base64_jpeg, loop)
+
     question = quiz_data.get("questionText", "").strip()
     options = quiz_data.get("options", [])
 
@@ -113,6 +116,60 @@ async def _click_option(frame: Frame, opt: dict) -> None:
 
     except Exception as e:
         print(f"[solver] Warning: could not click option '{label_text}': {e}")
+
+
+async def _solve_free_text(
+    frame: Frame,
+    quiz_data: dict,
+    accumulator,
+    vlm,
+    base64_jpeg: str,
+    loop: asyncio.AbstractEventLoop,
+) -> bool:
+    """Handle a free-text quiz question: generate an answer and type it into the field."""
+    question = quiz_data.get("questionText", "").strip()
+    inputs = quiz_data.get("options", [])
+
+    if not inputs:
+        print("[solver] No text input fields found — skipping.")
+        return False
+
+    if not question:
+        print("[solver] No question text extracted — using screenshot context only.")
+        question = "(Question text not detected — see screenshot)"
+
+    print(f"[solver] Free-text question: {question[:120]}")
+
+    context = accumulator.get_summary()
+    raw_answer = await loop.run_in_executor(
+        None, vlm.answer_free_text, base64_jpeg, question, context
+    )
+    answer = raw_answer.strip()
+    print(f"[solver] VLM free-text answer: {answer}")
+
+    await _type_answer(frame, inputs[0], answer)
+    await _submit_quiz(frame)
+    return True
+
+
+async def _type_answer(frame: Frame, input_opt: dict, text: str) -> None:
+    """Fill a text input or textarea with the given text using Playwright's fill()."""
+    opt_id = input_opt.get("id", "")
+    selector = input_opt.get("selector", "")
+
+    try:
+        if opt_id:
+            locator = frame.locator(f"#{opt_id}")
+            if await locator.count() > 0:
+                await locator.first.fill(text)
+                return
+        if selector:
+            locator = frame.locator(selector)
+            if await locator.count() > 0:
+                await locator.first.fill(text)
+                return
+    except Exception as e:
+        print(f"[solver] Warning: could not fill text field: {e}")
 
 
 async def _submit_quiz(frame: Frame) -> None:

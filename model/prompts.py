@@ -21,6 +21,17 @@ QUIZ_ANSWER_PROMPT = (
     "- Reply with the letter(s) only. No explanation."
 )
 
+FREE_TEXT_ANSWER_PROMPT = (
+    "You are a student answering a quiz at the end of a training course you just completed.\n\n"
+    "COURSE KNOWLEDGE BASE:\n{context}\n\n"
+    "QUIZ QUESTION:\n{question}\n\n"
+    "Instructions:\n"
+    "- Answer the question in one short sentence or phrase based ONLY on the course content above.\n"
+    "- Do not use outside knowledge — only what the course taught.\n"
+    "- Do not explain your reasoning. Do not write a full paragraph.\n"
+    "- Reply with your answer only. No preamble, no trailing punctuation unless it is part of the answer."
+)
+
 CONTEXT_COMPRESSION_PROMPT = (
     "Compress the following course notes into a concise, factual knowledge base "
     "that could be used to answer quiz questions.\n"

@@ -36,36 +36,42 @@ QUIZ_SELECTORS = [
     "li[data-answer]",
 ]
 
+FREE_TEXT_SELECTORS = [
+    ".quiz-question input[type='text']",
+    ".question-container input[type='text']",
+    ".h5p-question input[type='text']",
+    ".h5p-question textarea",
+    ".h5p-text-input",
+    ".h5p-fill-in input",
+    ".ft-quiz input[type='text']",
+    ".ft-quiz textarea",
+    "input[type='text']",   # broad fallback, tried last
+    "textarea",
+]
+
 _DETECT_JS = """
-(selectors) => {
-    function check(doc, prefix) {
+([mcSelectors, ftSelectors]) => {
+    function check(doc, selectors, qType) {
         for (const sel of selectors) {
             try {
                 const els = doc.querySelectorAll(sel);
-                if (els.length > 0) {
-                    return { detected: true, selector: sel, count: els.length };
-                }
+                if (els.length > 0)
+                    return { detected: true, selector: sel, count: els.length, questionType: qType };
             } catch (e) {}
         }
         return null;
     }
-
-    // Check main document
-    const main = check(document, '');
+    function checkDoc(doc) {
+        return check(doc, mcSelectors, 'multiple_choice') || check(doc, ftSelectors, 'free_text');
+    }
+    const main = checkDoc(document);
     if (main) return main;
-
-    // Check accessible iframes
-    const iframes = Array.from(document.querySelectorAll('iframe'));
-    for (const iframe of iframes) {
+    for (const iframe of Array.from(document.querySelectorAll('iframe'))) {
         try {
             const iDoc = iframe.contentDocument || iframe.contentWindow.document;
-            if (iDoc) {
-                const result = check(iDoc, '');
-                if (result) return result;
-            }
+            if (iDoc) { const r = checkDoc(iDoc); if (r) return r; }
         } catch (e) {}
     }
-
     return null;
 }
 """
@@ -98,6 +104,6 @@ async def detect_quiz(page: Page) -> dict | None:
 
 async def _check_frame(frame: Frame) -> dict | None:
     try:
-        return await frame.evaluate(_DETECT_JS, QUIZ_SELECTORS)
+        return await frame.evaluate(_DETECT_JS, [QUIZ_SELECTORS, FREE_TEXT_SELECTORS])
     except Exception:
         return None
