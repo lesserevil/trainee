@@ -1,0 +1,48 @@
+[project]
+name = "trainee"
+version = "0.1.0"
+description = "AI-powered course taker — watches training courses and answers quizzes"
+requires-python = ">=3.10"
+
+dependencies = [
+    # Browser automation
+    "playwright>=1.47.0",
+    # Image handling
+    "Pillow>=10.0.0",
+    "imagehash>=4.3.0",
+    # Numpy (used by audio)
+    "numpy>=1.26.0",
+]
+
+[project.optional-dependencies]
+# Apple Silicon / macOS backend
+mlx = [
+    "mlx-vlm>=0.1.0",
+    "transformers>=4.45.0",  # 4.50+ has a NoneType bug when torchvision absent; patched in model/vlm.py at runtime
+]
+# NVIDIA CUDA backend
+vllm = [
+    "vllm>=0.6.1",
+    "transformers>=4.45.0",
+]
+# Optional audio transcription (both backends)
+audio = [
+    "faster-whisper>=1.0.0",
+    "sounddevice>=0.5.0",
+]
+# Install everything
+all = [
+    "trainee[mlx,vllm,audio]",
+]
+
+[project.scripts]
+trainee = "trainee:main"
+
+[tool.uv]
+# scipy 1.13.1 (resolved via imagehash) has no Python 3.14 wheel and fails to
+# build from source.  Force a floor that has pre-built wheels for Python 3.14.
+constraint-dependencies = ["scipy>=1.14.0"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
