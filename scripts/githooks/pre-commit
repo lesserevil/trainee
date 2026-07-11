@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# BEGIN OOMPAH PROJECT BOOTSTRAP v:1
+# Baseline pre-commit hook for oompah-managed projects.
+#
+# Install once per clone:
+#   git config core.hooksPath scripts/githooks
+# END OOMPAH PROJECT BOOTSTRAP
+
+set -euo pipefail
+
+fail() { echo "pre-commit: error: $*" >&2; exit 1; }
+warn() { echo "pre-commit: warning: $*" >&2; }
+
+if [[ -f Makefile ]] && grep -q '^fmt-check:' Makefile; then
+    if ! make fmt-check >/dev/null 2>&1; then
+        fail "formatter drift - run 'make fmt' and stage the changes"
+    fi
+fi
+
+staged=$(git diff --cached --name-only)
+if echo "$staged" | grep -q '^\.oompah/tasks/'; then
+    warn ".oompah/tasks changed in this commit; oompah should normally be the only writer"
+fi
+
+exit 0
