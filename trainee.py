@@ -5,8 +5,8 @@ automatically using a local vision-language model.
 
 Usage:
     python trainee.py --url "https://example.com/course/module1"
-    python trainee.py --url "..." --backend mlx --interval 2.0 --headless
-    python trainee.py --url "..." --backend mlx --no-audio  # diagnostic only
+    python trainee.py --url "..." --backend nvidia --interval 2.0 --headless
+    python trainee.py --url "..." --backend nvidia --no-audio  # diagnostic only
 """
 
 from __future__ import annotations
@@ -18,7 +18,12 @@ from browser.controller import BrowserController
 from browser.navigator import try_advance_page
 from browser.screenshot import capture_base64_jpeg
 from browser.video_probe import get_video_state
-from config import Config
+from config import (
+    Config,
+    DEFAULT_MODEL_ID,
+    DEFAULT_NVIDIA_API_BASE_URL,
+    DEFAULT_NVIDIA_API_KEY_ENV,
+)
 from content.watcher import capture_content_frame, is_content_active
 from content.audio_capture import check_audio_setup
 from context.accumulator import ContextAccumulator
@@ -41,6 +46,9 @@ async def run(url: str, config: Config) -> None:
         max_model_len=config.max_model_len,
         max_images=config.max_vllm_images_per_prompt,
         backend=config.backend,
+        nvidia_api_base_url=config.nvidia_api_base_url,
+        nvidia_api_key_env=config.nvidia_api_key_env,
+        nvidia_max_tokens=config.nvidia_max_tokens,
     )
 
     # 2. Start browser
@@ -182,8 +190,20 @@ def main() -> None:
         help="URL of the training course to take",
     )
     parser.add_argument(
-        "--model", default="Qwen/Qwen2-VL-7B-Instruct",
-        help="HuggingFace model ID for the vision-language model",
+        "--model", default=DEFAULT_MODEL_ID,
+        help="Model ID for the vision-language model",
+    )
+    parser.add_argument(
+        "--api-base-url", default=DEFAULT_NVIDIA_API_BASE_URL,
+        help="OpenAI-compatible API base URL for the NVIDIA backend",
+    )
+    parser.add_argument(
+        "--api-key-env", default=DEFAULT_NVIDIA_API_KEY_ENV,
+        help="Environment variable containing the NVIDIA API key",
+    )
+    parser.add_argument(
+        "--api-max-tokens", type=int, default=1024,
+        help="Maximum response tokens for the NVIDIA API backend",
     )
     parser.add_argument(
         "--no-audio", action="store_true",
@@ -206,14 +226,20 @@ def main() -> None:
         help="faster-whisper model size (e.g. tiny, base, medium, large-v3)",
     )
     parser.add_argument(
-        "--backend", default="auto", choices=["auto", "vllm", "mlx"],
-        help="Model backend: auto (detect), vllm (NVIDIA CUDA), mlx (Apple Silicon)",
+        "--backend", default="nvidia", choices=["nvidia", "auto", "vllm", "mlx"],
+        help=(
+            "Model backend: nvidia (hosted API), auto (local detect), "
+            "vllm (local NVIDIA CUDA), mlx (local Apple Silicon)"
+        ),
     )
     args = parser.parse_args()
 
     config = Config(
         model_id=args.model,
         backend=args.backend,
+        nvidia_api_base_url=args.api_base_url,
+        nvidia_api_key_env=args.api_key_env,
+        nvidia_max_tokens=args.api_max_tokens,
         use_audio=not args.no_audio,
         headless=args.headless,
         screenshot_interval=args.interval,

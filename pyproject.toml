@@ -5,6 +5,8 @@ description = "AI-powered course taker — watches training courses and answers 
 requires-python = ">=3.10"
 
 dependencies = [
+    # Hosted model API
+    "openai>=1.0.0",
     # Browser automation
     "playwright>=1.47.0",
     # Image handling

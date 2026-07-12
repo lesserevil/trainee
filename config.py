@@ -1,11 +1,19 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+
+
+DEFAULT_MODEL_ID = "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
+DEFAULT_NVIDIA_API_BASE_URL = "https://integrate.api.nvidia.com/v1"
+DEFAULT_NVIDIA_API_KEY_ENV = "BUILD_NVIDIA_COM_API_TOKEN"
 
 
 @dataclass
 class Config:
     # Model
-    model_id: str = "Qwen/Qwen2-VL-7B-Instruct"
-    backend: str = "auto"            # "auto", "vllm", or "mlx"
+    model_id: str = DEFAULT_MODEL_ID
+    backend: str = "nvidia"          # "nvidia", "auto", "vllm", or "mlx"
+    nvidia_api_base_url: str = DEFAULT_NVIDIA_API_BASE_URL
+    nvidia_api_key_env: str = DEFAULT_NVIDIA_API_KEY_ENV
+    nvidia_max_tokens: int = 1024
     max_model_len: int = 32768       # vllm only
     max_vllm_images_per_prompt: int = 8  # vllm only
 

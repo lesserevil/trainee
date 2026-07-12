@@ -1,10 +1,14 @@
-"""Vision-language model abstraction with auto-detected backend.
+"""Vision-language model abstraction.
 
-Supports two backends:
+Supports three backends:
+  - nvidia : NVIDIA-hosted NIM API. Uses the OpenAI-compatible API.
   - vllm : NVIDIA CUDA GPUs (Linux/Windows). Uses vllm.LLM.
   - mlx  : Apple Silicon (macOS M-series). Uses mlx-vlm.
 
-Auto-detection order (--backend auto):
+Default backend:
+  - nvidia, using BUILD_NVIDIA_COM_API_TOKEN and https://integrate.api.nvidia.com/v1.
+
+Local auto-detection order (--backend auto):
   1. NVIDIA GPU present → vllm
   2. Apple Silicon macOS → mlx
   3. Fallback            → vllm (CPU mode)
@@ -21,6 +25,7 @@ from __future__ import annotations
 
 import base64
 import io
+import os
 import platform
 
 from model.prompts import (
@@ -29,6 +34,11 @@ from model.prompts import (
     FREE_TEXT_ANSWER_PROMPT,
     QUIZ_ANSWER_PROMPT,
 )
+
+NVIDIA_CHAT_EXTRA_BODY = {
+    "top_k": 1,
+    "chat_template_kwargs": {"enable_thinking": False},
+}
 
 
 # ---------------------------------------------------------------------------
@@ -53,6 +63,102 @@ def detect_backend() -> str:
 
     print("[model] No GPU detected → using vllm (CPU mode)")
     return "vllm"
+
+
+# ---------------------------------------------------------------------------
+# NVIDIA hosted API backend
+# ---------------------------------------------------------------------------
+
+class _NVIDIAAPIBackend:
+    def __init__(
+        self,
+        model_id: str,
+        base_url: str,
+        api_key_env: str,
+        max_tokens: int,
+    ) -> None:
+        api_key = os.getenv(api_key_env)
+        if not api_key:
+            raise RuntimeError(
+                f"{api_key_env} is not set. Create an API key at "
+                "https://build.nvidia.com and export it before running trainee."
+            )
+
+        from openai import OpenAI
+
+        print(f"[model/nvidia] Using {model_id} at {base_url}")
+        self._model_id = model_id
+        self._max_tokens = max_tokens
+        self._client = OpenAI(base_url=base_url, api_key=api_key)
+
+    def _chat(self, messages: list, *, max_tokens: int | None = None) -> str:
+        response = self._client.chat.completions.create(
+            model=self._model_id,
+            messages=messages,
+            temperature=0.2,
+            max_tokens=max_tokens or self._max_tokens,
+            extra_body=NVIDIA_CHAT_EXTRA_BODY,
+        )
+        return (response.choices[0].message.content or "").strip()
+
+    @staticmethod
+    def _image_content(base64_jpeg: str) -> dict:
+        return {
+            "type": "image_url",
+            "image_url": {"url": f"data:image/jpeg;base64,{base64_jpeg}"},
+        }
+
+    def describe_frame(self, base64_jpeg: str, prior_context: str) -> str:
+        prompt = FRAME_DESCRIPTION_PROMPT.format(context=prior_context or "None yet.")
+        return self._chat([{
+            "role": "user",
+            "content": [
+                self._image_content(base64_jpeg),
+                {"type": "text", "text": prompt},
+            ],
+        }])
+
+    def answer_quiz(
+        self, base64_jpeg: str, question: str, options: list[str], context: str
+    ) -> str:
+        options_text = "\n".join(f"{chr(65+i)}. {o}" for i, o in enumerate(options))
+        prompt = QUIZ_ANSWER_PROMPT.format(
+            context=context or "No course content captured yet.",
+            question=question,
+            options=options_text,
+        )
+        return self._chat([{
+            "role": "user",
+            "content": [
+                self._image_content(base64_jpeg),
+                {"type": "text", "text": prompt},
+            ],
+        }])
+
+    def answer_free_text(
+        self, base64_jpeg: str, question: str, context: str
+    ) -> str:
+        prompt = FREE_TEXT_ANSWER_PROMPT.format(
+            context=context or "No course content captured yet.",
+            question=question,
+        )
+        return self._chat([{
+            "role": "user",
+            "content": [
+                self._image_content(base64_jpeg),
+                {"type": "text", "text": prompt},
+            ],
+        }])
+
+    def compress_context(self, existing_summary: str, new_content: str) -> str:
+        prompt = CONTEXT_COMPRESSION_PROMPT.format(
+            existing=existing_summary or "None yet.",
+            new_content=new_content,
+        )
+        return self._chat([{
+            "role": "user",
+            "content": [{"type": "text", "text": prompt}],
+        }])
 
 
 # ---------------------------------------------------------------------------
@@ -285,13 +391,18 @@ class VisionModel:
     Singleton factory. Returns the appropriate backend for this machine.
 
     Usage:
-        vlm = VisionModel.get(model_id=..., max_model_len=..., max_images=..., backend="auto")
+        vlm = VisionModel.get(
+            model_id=...,
+            max_model_len=...,
+            max_images=...,
+            backend="nvidia",
+        )
         vlm.describe_frame(b64, ctx)
         vlm.answer_quiz(b64, question, options, ctx)
         vlm.compress_context(old_summary, new_content)
     """
 
-    _instance: _VLLMBackend | _MLXBackend | None = None
+    _instance: _NVIDIAAPIBackend | _VLLMBackend | _MLXBackend | None = None
 
     @classmethod
     def get(
@@ -299,14 +410,24 @@ class VisionModel:
         model_id: str,
         max_model_len: int,
         max_images: int,
-        backend: str = "auto",
-    ) -> _VLLMBackend | _MLXBackend:
+        backend: str = "nvidia",
+        nvidia_api_base_url: str = "https://integrate.api.nvidia.com/v1",
+        nvidia_api_key_env: str = "BUILD_NVIDIA_COM_API_TOKEN",
+        nvidia_max_tokens: int = 1024,
+    ) -> _NVIDIAAPIBackend | _VLLMBackend | _MLXBackend:
         if cls._instance is not None:
             return cls._instance
 
         resolved = backend if backend != "auto" else detect_backend()
 
-        if resolved == "mlx":
+        if resolved == "nvidia":
+            cls._instance = _NVIDIAAPIBackend(
+                model_id,
+                nvidia_api_base_url,
+                nvidia_api_key_env,
+                nvidia_max_tokens,
+            )
+        elif resolved == "mlx":
             cls._instance = _MLXBackend(model_id)
         else:
             cls._instance = _VLLMBackend(model_id, max_model_len, max_images)

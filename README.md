@@ -2,21 +2,33 @@
 
 AI-powered course taker. `trainee` opens a browser, watches a training course,
 captures screenshots and system audio, builds a rolling course summary with a
-local vision-language model, and answers quizzes from that accumulated context.
+vision-language model, and answers quizzes from that accumulated context.
+
+## Default Model
+
+The default model is NVIDIA's hosted
+`nvidia/nemotron-3-nano-omni-30b-a3b-reasoning` model through the
+OpenAI-compatible NVIDIA API endpoint:
+
+```text
+https://integrate.api.nvidia.com/v1
+```
+
+You need an NVIDIA API key from [build.nvidia.com](https://build.nvidia.com).
+Set it in the environment as `BUILD_NVIDIA_COM_API_TOKEN` before running `trainee`.
 
 ## Supported Setup
 
 The intended setup is:
 
-- macOS on Apple Silicon, using the MLX backend
 - Python 3.12 with [uv](https://github.com/astral-sh/uv)
+- An NVIDIA API key in `BUILD_NVIDIA_COM_API_TOKEN`
 - Playwright Chromium
 - BlackHole 2ch configured as a system-audio capture device
 
-The package also contains a vLLM backend for NVIDIA CUDA machines, but the
-current audio capture implementation expects the macOS BlackHole device named
-`BlackHole 2ch`. A full non-macOS setup needs an equivalent audio-capture
-implementation or a compatible device layer.
+The default model runs through NVIDIA's hosted API, so no local GPU is required
+for model inference. The current audio capture implementation still expects the
+macOS BlackHole device named `BlackHole 2ch`.
 
 Python `>=3.10` is allowed by package metadata, but the documented setup uses
 Python 3.12 because that is the path this project is exercised against.
@@ -28,8 +40,15 @@ Run these commands from a fresh checkout:
 ```bash
 uv venv --python 3.12
 source .venv/bin/activate
-uv pip install -e ".[mlx,audio]"
+uv pip install -e ".[audio]"
 playwright install chromium
+```
+
+Create an API key at [build.nvidia.com](https://build.nvidia.com), then export
+it:
+
+```bash
+export BUILD_NVIDIA_COM_API_TOKEN="nvapi-..."
 ```
 
 Install BlackHole:
@@ -51,48 +70,28 @@ Then configure macOS audio:
 Start a course:
 
 ```bash
-python trainee.py --url "https://example.com/course/module1" --backend mlx
+python trainee.py --url "https://example.com/course/module1"
 ```
 
 The browser opens with a persistent profile in `.browser-profile`. Log in,
 accept any terms, navigate to the start of the course, then press Enter in the
 terminal when you want `trainee` to begin watching.
 
-The first model load may take several minutes because the model weights need to
-download and initialize.
-
-## NVIDIA Backend
-
-For CUDA machines, install the vLLM extra instead of MLX:
-
-```bash
-uv venv --python 3.12
-source .venv/bin/activate
-uv pip install -e ".[vllm,audio]"
-playwright install chromium
-```
-
-Run with:
-
-```bash
-python trainee.py --url "https://example.com/course/module1" --backend vllm
-```
-
-This backend still uses the same audio preflight. Today that preflight expects
-BlackHole-style audio capture, so treat the CUDA path as model-backend support
-unless you have also provided a compatible system-audio capture device.
-
 ## Usage
 
 ```bash
-# Normal Apple Silicon run with required audio capture
-python trainee.py --url "https://example.com/course/module1" --backend mlx
+# Normal run with hosted NVIDIA model and required audio capture
+python trainee.py --url "https://example.com/course/module1"
 
 # Installed console script
-trainee --url "https://example.com/course/module1" --backend mlx
+trainee --url "https://example.com/course/module1"
+
+# Override the hosted model
+python trainee.py --url "https://example.com/course/module1" \
+  --model "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
 
 # Diagnostic visual-only run
-python trainee.py --url "https://example.com/course/module1" --backend mlx --no-audio
+python trainee.py --url "https://example.com/course/module1" --no-audio
 ```
 
 `--no-audio` is useful for checking browser automation or model setup, but it is
@@ -104,13 +103,42 @@ agent uses to answer quizzes.
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--url` | required | URL of the training course |
-| `--backend` | `auto` | Model backend: `auto`, `vllm`, or `mlx` |
-| `--model` | `Qwen/Qwen2-VL-7B-Instruct` | Hugging Face model ID |
+| `--backend` | `nvidia` | Model backend: `nvidia`, `auto`, `vllm`, or `mlx` |
+| `--model` | `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning` | Model ID |
+| `--api-base-url` | `https://integrate.api.nvidia.com/v1` | OpenAI-compatible API base URL for the NVIDIA backend |
+| `--api-key-env` | `BUILD_NVIDIA_COM_API_TOKEN` | Environment variable containing the NVIDIA API key |
+| `--api-max-tokens` | `1024` | Maximum response tokens for hosted model calls |
 | `--interval` | `3.0` | Screenshot interval in seconds |
 | `--whisper-model` | `large-v3` | faster-whisper model size |
 | `--headless` | `False` | Run browser in headless mode |
 | `--max-iterations` | `500` | Safety limit on main loop iterations |
 | `--no-audio` | `False` | Diagnostic mode that disables required audio capture |
+
+## Local Backends
+
+The hosted NVIDIA backend is the default. Local model backends are still
+available for development or offline operation.
+
+Apple Silicon MLX:
+
+```bash
+uv pip install -e ".[mlx,audio]"
+python trainee.py --url "https://example.com/course/module1" \
+  --backend mlx \
+  --model "Qwen/Qwen2-VL-7B-Instruct"
+```
+
+NVIDIA CUDA with vLLM:
+
+```bash
+uv pip install -e ".[vllm,audio]"
+python trainee.py --url "https://example.com/course/module1" \
+  --backend vllm \
+  --model "Qwen/Qwen2-VL-7B-Instruct"
+```
+
+`--backend auto` preserves the previous local hardware detection behavior: CUDA
+uses vLLM, Apple Silicon uses MLX, and other machines fall back to vLLM.
 
 ## How It Works
 
@@ -118,12 +146,28 @@ agent uses to answer quizzes.
 2. Waits for you to log in and navigate to the course.
 3. Captures screenshots and system audio while course content plays.
 4. Transcribes audio with faster-whisper.
-5. Builds a rolling summary using the local VLM.
+5. Builds a rolling summary using the configured VLM.
 6. Detects quizzes, extracts the prompt and options, and answers from the
    accumulated context.
 7. Advances through slides and pages as content completes.
 
 ## Troubleshooting
+
+### NVIDIA API Key Is Missing
+
+Create a key at [build.nvidia.com](https://build.nvidia.com), then export it:
+
+```bash
+export BUILD_NVIDIA_COM_API_TOKEN="nvapi-..."
+```
+
+To use a different environment variable name:
+
+```bash
+export MY_NVIDIA_KEY="nvapi-..."
+python trainee.py --url "https://example.com/course/module1" \
+  --api-key-env MY_NVIDIA_KEY
+```
 
 ### Audio Setup Is Incomplete
 
@@ -134,20 +178,21 @@ and make the Multi-Output Device your current macOS output device.
 For a visual-only diagnostic run:
 
 ```bash
-python trainee.py --url "https://example.com/course/module1" --backend mlx --no-audio
+python trainee.py --url "https://example.com/course/module1" --no-audio
 ```
 
 ### `sounddevice` Is Missing
 
-Install the audio extra for your backend:
+Install the audio extra:
+
+```bash
+uv pip install -e ".[audio]"
+```
+
+For local backends, keep the matching backend extra:
 
 ```bash
 uv pip install -e ".[mlx,audio]"
-```
-
-or:
-
-```bash
 uv pip install -e ".[vllm,audio]"
 ```
 
@@ -159,7 +204,7 @@ If Playwright says the browser executable does not exist, install Chromium:
 playwright install chromium
 ```
 
-### Wrong Backend Dependency
+### Local Backend Dependency Is Missing
 
 If `mlx_vlm` is missing, install the MLX extra:
 

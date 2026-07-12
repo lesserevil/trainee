@@ -36,8 +36,7 @@ def check_audio_setup() -> None:
         print(
             "ERROR: The 'sounddevice' package is not installed.\n"
             "       Re-install dependencies with the audio extra:\n"
-            "       uv pip install -e '.[mlx,audio]'    # Apple Silicon\n"
-            "       uv pip install -e '.[vllm,audio]'   # NVIDIA CUDA"
+            "       uv pip install -e '.[audio]'"
         )
         sys.exit(1)
 

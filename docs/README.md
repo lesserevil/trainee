@@ -9,9 +9,13 @@ operating guide for this project.
 
 ## Important Setup Notes
 
-Audio capture is a required part of normal operation. The documented supported
-path is macOS on Apple Silicon with BlackHole 2ch, a Multi-Output Device, and
-the MLX backend.
+The default model backend is NVIDIA's hosted API at
+`https://integrate.api.nvidia.com/v1` using
+`nvidia/nemotron-3-nano-omni-30b-a3b-reasoning`. Users need an API key from
+build.nvidia.com in `BUILD_NVIDIA_COM_API_TOKEN`.
+
+Audio capture is a required part of normal operation. The documented audio path
+uses BlackHole 2ch and a macOS Multi-Output Device.
 
 Use `--no-audio` only for diagnostic visual-only runs, such as checking
 Playwright browser startup or model loading before completing audio setup.
