@@ -19,7 +19,7 @@ class Config:
     screenshot_interval: float = 3.0     # seconds between frame captures
     screenshot_quality: int = 75         # JPEG quality 1-100
 
-    # Audio (on by default, disable with --no-audio)
+    # Audio (required for normal operation; --no-audio is diagnostic only)
     use_audio: bool = True
     whisper_model_size: str = "large-v3"
     audio_chunk_seconds: int = 8

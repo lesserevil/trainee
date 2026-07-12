@@ -1,4 +1,4 @@
-"""System audio capture via BlackHole virtual audio device (opt-in).
+"""System audio capture via BlackHole virtual audio device.
 
 Requires:
     brew install blackhole-2ch
@@ -35,7 +35,9 @@ def check_audio_setup() -> None:
     except ImportError:
         print(
             "ERROR: The 'sounddevice' package is not installed.\n"
-            "       Re-install dependencies: uv pip install -e '.[mlx,audio]'"
+            "       Re-install dependencies with the audio extra:\n"
+            "       uv pip install -e '.[mlx,audio]'    # Apple Silicon\n"
+            "       uv pip install -e '.[vllm,audio]'   # NVIDIA CUDA"
         )
         sys.exit(1)
 
@@ -60,16 +62,20 @@ def check_audio_setup() -> None:
             print("    A Multi-Output Device routes audio to both your")
             print("    speakers and BlackHole so trainee can capture it.")
         print()
-        print("  Run the setup script to fix this automatically:")
+        print("  Audio capture is required for normal operation.")
+        print("  Complete the setup in README.md:")
         print()
-        print("      python setup_audio.py")
+        print("      brew install blackhole-2ch")
+        print("      # then create and select a Multi-Output Device")
         print()
-        print("  Then re-run trainee. To skip audio entirely:")
+        print("  For a visual-only diagnostic run:")
         print()
-        print("      python main.py --url '...' --no-audio")
+        print("      python trainee.py --url '...' --no-audio")
         print("=" * 60)
         print()
         sys.exit(1)
+
+
 SAMPLE_RATE = 16_000   # Hz — matches Whisper's expected input rate
 CHANNELS = 1
 

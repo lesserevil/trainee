@@ -1,105 +1,195 @@
 # trainee
 
-AI-powered course taker. Watches browser-based training courses in real time and answers quizzes automatically using a local vision-language model.
+AI-powered course taker. `trainee` opens a browser, watches a training course,
+captures screenshots and system audio, builds a rolling course summary with a
+local vision-language model, and answers quizzes from that accumulated context.
 
-## How it works
+## Supported Setup
 
-1. Opens a browser and waits for you to log in and navigate to the course
-2. Watches the course content (video or slides) by taking periodic screenshots
-3. Builds a rolling summary of what's been covered using a local VLM
-4. Detects quizzes automatically and answers them based on the accumulated context
-5. Advances through slides and pages as content completes
+The intended setup is:
 
-## Requirements
+- macOS on Apple Silicon, using the MLX backend
+- Python 3.12 with [uv](https://github.com/astral-sh/uv)
+- Playwright Chromium
+- BlackHole 2ch configured as a system-audio capture device
 
-- Python 3.12+
-- [uv](https://github.com/astral-sh/uv)
-- Playwright (Chromium)
-- One of:
-  - Apple Silicon Mac (MLX backend)
-  - NVIDIA GPU with CUDA (vLLM backend)
-- Optional: [BlackHole](https://existential.audio/blackhole/) virtual audio device for audio capture (macOS)
+The package also contains a vLLM backend for NVIDIA CUDA machines, but the
+current audio capture implementation expects the macOS BlackHole device named
+`BlackHole 2ch`. A full non-macOS setup needs an equivalent audio-capture
+implementation or a compatible device layer.
 
-## Installation
+Python `>=3.10` is allowed by package metadata, but the documented setup uses
+Python 3.12 because that is the path this project is exercised against.
+
+## Quick Start
+
+Run these commands from a fresh checkout:
 
 ```bash
 uv venv --python 3.12
 source .venv/bin/activate
-
-# Apple Silicon
 uv pip install -e ".[mlx,audio]"
-
-# NVIDIA CUDA
-uv pip install -e ".[vllm,audio]"
-
 playwright install chromium
 ```
 
-## Usage
-
-```bash
-# Basic usage
-python trainee.py --url "https://example.com/course/module1"
-
-# With options
-python trainee.py --url "..." --backend mlx --interval 2.0 --headless
-
-# Or via the installed script
-trainee --url "https://example.com/course/module1"
-```
-
-### Options
-
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--url` | *(required)* | URL of the training course |
-| `--backend` | `auto` | Model backend: `auto`, `vllm` (NVIDIA), `mlx` (Apple Silicon) |
-| `--model` | `Qwen/Qwen2-VL-7B-Instruct` | HuggingFace model ID |
-| `--interval` | `3.0` | Screenshot interval in seconds |
-| `--no-audio` | — | Disable audio capture |
-| `--whisper-model` | `large-v3` | faster-whisper model size |
-| `--headless` | — | Run browser in headless mode |
-| `--max-iterations` | `500` | Safety limit on main loop iterations |
-
-## Audio setup (optional)
-
-Audio capture uses BlackHole to record system audio and transcribe it with faster-whisper. This gives the model spoken narration as additional context alongside screenshots.
-
-Audio is enabled by default when the `audio` extra is installed. Use `--no-audio` to disable it.
-
-### Manual setup (macOS)
-
-**1. Install BlackHole 2ch**
+Install BlackHole:
 
 ```bash
 brew install blackhole-2ch
 ```
 
-If you don't have Homebrew, install it from https://brew.sh first. After installing BlackHole, you may need to restart your Mac before it appears as an audio device.
+Then configure macOS audio:
 
-**2. Create a Multi-Output Device**
+1. Open **Audio MIDI Setup**.
+2. Click **+** and choose **Create Multi-Output Device**.
+3. Check **BlackHole 2ch** and your normal speakers or headphones.
+4. Enable **Drift Correction** for **BlackHole 2ch** only.
+5. Rename the device to something recognizable, such as `trainee Multi-Output`.
+6. Open **System Settings > Sound > Output** and select that Multi-Output
+   Device.
 
-Open **Audio MIDI Setup** (Spotlight → "Audio MIDI Setup"), then:
+Start a course:
 
-1. Click the **+** button at the bottom-left and choose **Create Multi-Output Device**
-2. In the right pane, check **BlackHole 2ch** and your speakers (e.g. "MacBook Pro Speakers" or "External Headphones")
-3. Enable **Drift Correction** for **BlackHole 2ch** only — leave it unchecked for your speakers. This keeps the virtual device in sync with the real hardware clock.
-4. Double-click the new device name and rename it to **trainee Multi-Output**
-
-**3. Set it as the system output**
-
-Open **System Settings → Sound → Output** and select **trainee Multi-Output**.
-
-Your audio will now play through your speakers and be captured by trainee at the same time.
-
-## Project structure
-
+```bash
+python trainee.py --url "https://example.com/course/module1" --backend mlx
 ```
+
+The browser opens with a persistent profile in `.browser-profile`. Log in,
+accept any terms, navigate to the start of the course, then press Enter in the
+terminal when you want `trainee` to begin watching.
+
+The first model load may take several minutes because the model weights need to
+download and initialize.
+
+## NVIDIA Backend
+
+For CUDA machines, install the vLLM extra instead of MLX:
+
+```bash
+uv venv --python 3.12
+source .venv/bin/activate
+uv pip install -e ".[vllm,audio]"
+playwright install chromium
+```
+
+Run with:
+
+```bash
+python trainee.py --url "https://example.com/course/module1" --backend vllm
+```
+
+This backend still uses the same audio preflight. Today that preflight expects
+BlackHole-style audio capture, so treat the CUDA path as model-backend support
+unless you have also provided a compatible system-audio capture device.
+
+## Usage
+
+```bash
+# Normal Apple Silicon run with required audio capture
+python trainee.py --url "https://example.com/course/module1" --backend mlx
+
+# Installed console script
+trainee --url "https://example.com/course/module1" --backend mlx
+
+# Diagnostic visual-only run
+python trainee.py --url "https://example.com/course/module1" --backend mlx --no-audio
+```
+
+`--no-audio` is useful for checking browser automation or model setup, but it is
+not the intended operating mode. Course narration is part of the context the
+agent uses to answer quizzes.
+
+### Options
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--url` | required | URL of the training course |
+| `--backend` | `auto` | Model backend: `auto`, `vllm`, or `mlx` |
+| `--model` | `Qwen/Qwen2-VL-7B-Instruct` | Hugging Face model ID |
+| `--interval` | `3.0` | Screenshot interval in seconds |
+| `--whisper-model` | `large-v3` | faster-whisper model size |
+| `--headless` | `False` | Run browser in headless mode |
+| `--max-iterations` | `500` | Safety limit on main loop iterations |
+| `--no-audio` | `False` | Diagnostic mode that disables required audio capture |
+
+## How It Works
+
+1. Opens Chromium with a persistent browser profile.
+2. Waits for you to log in and navigate to the course.
+3. Captures screenshots and system audio while course content plays.
+4. Transcribes audio with faster-whisper.
+5. Builds a rolling summary using the local VLM.
+6. Detects quizzes, extracts the prompt and options, and answers from the
+   accumulated context.
+7. Advances through slides and pages as content completes.
+
+## Troubleshooting
+
+### Audio Setup Is Incomplete
+
+`trainee` checks audio before loading the model. If it reports missing
+BlackHole or a missing Multi-Output Device, complete the BlackHole setup above
+and make the Multi-Output Device your current macOS output device.
+
+For a visual-only diagnostic run:
+
+```bash
+python trainee.py --url "https://example.com/course/module1" --backend mlx --no-audio
+```
+
+### `sounddevice` Is Missing
+
+Install the audio extra for your backend:
+
+```bash
+uv pip install -e ".[mlx,audio]"
+```
+
+or:
+
+```bash
+uv pip install -e ".[vllm,audio]"
+```
+
+### Chromium Is Missing
+
+If Playwright says the browser executable does not exist, install Chromium:
+
+```bash
+playwright install chromium
+```
+
+### Wrong Backend Dependency
+
+If `mlx_vlm` is missing, install the MLX extra:
+
+```bash
+uv pip install -e ".[mlx,audio]"
+```
+
+If `vllm` is missing, install the vLLM extra:
+
+```bash
+uv pip install -e ".[vllm,audio]"
+```
+
+### Browser Login State Is Stale
+
+Browser cookies and SSO state live in `.browser-profile`. To reset the browser
+profile:
+
+```bash
+rm -rf .browser-profile
+```
+
+## Project Structure
+
+```text
 trainee/
-├── trainee.py           # CLI entry point and main orchestration loop
+├── trainee.py           # CLI entry point and orchestration loop
 ├── config.py            # Configuration dataclass
 ├── browser/             # Playwright browser control, navigation, screenshots
-├── content/             # Screenshot watcher, audio capture, transcription
+├── content/             # Screenshot watching, audio capture, transcription
 ├── model/               # Vision-language model interface and prompts
 ├── quiz/                # Quiz detection, extraction, and answering
 └── context/             # Rolling context accumulator

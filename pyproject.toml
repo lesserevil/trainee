@@ -27,7 +27,7 @@ vllm = [
     "vllm>=0.6.1",
     "transformers>=4.45.0",
 ]
-# Optional audio transcription (both backends)
+# Audio transcription extra (required for normal operation)
 audio = [
     "faster-whisper>=1.0.0",
     "sounddevice>=0.5.0",

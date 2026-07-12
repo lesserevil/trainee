@@ -1,11 +1,12 @@
 """trainee — AI-powered course taker.
 
 Watches a browser-based training course in real time and answers quizzes
-automatically using a local vision-language model (vLLM).
+automatically using a local vision-language model.
 
 Usage:
     python trainee.py --url "https://example.com/course/module1"
-    python trainee.py --url "..." --audio --interval 2.0 --headless
+    python trainee.py --url "..." --backend mlx --interval 2.0 --headless
+    python trainee.py --url "..." --backend mlx --no-audio  # diagnostic only
 """
 
 from __future__ import annotations
@@ -55,7 +56,7 @@ async def run(url: str, config: Config) -> None:
     await loop.run_in_executor(None, input, "  > Press Enter to start... ")
     print()
 
-    # 3. Optional audio capture
+    # 3. Required audio capture, unless explicitly disabled for diagnostics.
     audio_capture = None
     transcriber = None
     if config.use_audio:
@@ -67,8 +68,12 @@ async def run(url: str, config: Config) -> None:
             transcriber = Transcriber(model_size=config.whisper_model_size)
             audio_capture.start()
         except RuntimeError as e:
-            print(f"[audio] Warning: {e}\nContinuing without audio capture.")
-            audio_capture = None
+            print(f"[audio] ERROR: {e}")
+            print(
+                "[audio] Audio capture is required for normal operation. "
+                "Fix audio setup or use --no-audio only for diagnostics."
+            )
+            raise
 
     # 4. Context accumulator
     accumulator = ContextAccumulator(vlm, compress_every=config.compress_every_n_frames)
@@ -182,7 +187,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--no-audio", action="store_true",
-        help="Disable audio capture (audio is on by default; requires BlackHole on macOS)",
+        help="Disable audio capture for diagnostic runs only",
     )
     parser.add_argument(
         "--headless", action="store_true",
