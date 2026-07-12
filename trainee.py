@@ -13,6 +13,8 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+from datetime import datetime, timezone
+from pathlib import Path
 
 from browser.controller import BrowserController
 from browser.navigator import try_advance_page
@@ -31,6 +33,22 @@ from model.vlm import VisionModel
 from quiz.detector import detect_quiz
 from quiz.extractor import extract_quiz
 from quiz.solver import solve_and_click
+
+
+def _default_knowledge_base_path(config: Config) -> Path | None:
+    if not config.save_knowledge_base:
+        return None
+    if config.knowledge_base_file:
+        return Path(config.knowledge_base_file).expanduser()
+
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%SZ")
+    knowledge_dir = Path(config.knowledge_base_dir).expanduser()
+    path = knowledge_dir / f"trainee-{stamp}.md"
+    counter = 2
+    while path.exists():
+        path = knowledge_dir / f"trainee-{stamp}-{counter}.md"
+        counter += 1
+    return path
 
 
 async def run(url: str, config: Config) -> None:
@@ -83,14 +101,31 @@ async def run(url: str, config: Config) -> None:
             )
             raise
 
-    # 4. Context accumulator
-    accumulator = ContextAccumulator(vlm, compress_every=config.compress_every_n_frames)
+    # 4. Context accumulator and live Markdown knowledge base
+    knowledge_base_path = _default_knowledge_base_path(config)
+    accumulator = ContextAccumulator(
+        vlm,
+        compress_every=config.compress_every_n_frames,
+        knowledge_base_path=knowledge_base_path,
+        metadata={
+            "Course URL": url,
+            "Model backend": config.backend,
+            "Model ID": config.model_id,
+            "NVIDIA API base URL": (
+                config.nvidia_api_base_url if config.backend == "nvidia" else ""
+            ),
+            "Audio capture": "enabled" if config.use_audio else "disabled",
+        },
+    )
+    if accumulator.knowledge_base_path:
+        print(f"[knowledge] Writing knowledge base to: {accumulator.knowledge_base_path}")
 
     print(f"\n[trainee] Starting course at: {url}")
     print("[trainee] Press Ctrl+C to stop.\n")
 
     last_b64: str | None = None
     iteration = 0
+    session_status = "running"
 
     try:
         while iteration < config.max_iterations:
@@ -163,10 +198,18 @@ async def run(url: str, config: Config) -> None:
                 print("[trainee] No navigation button found — waiting...")
                 await asyncio.sleep(config.screenshot_interval)
 
+        session_status = "max iterations reached"
+
     except KeyboardInterrupt:
+        session_status = "stopped by user"
         print("\n[trainee] Stopped by user.")
 
+    except Exception:
+        session_status = "error"
+        raise
+
     finally:
+        accumulator.mark_finished(session_status)
         if audio_capture:
             audio_capture.stop()
         await browser.stop()
@@ -222,6 +265,18 @@ def main() -> None:
         help="Safety limit on main loop iterations",
     )
     parser.add_argument(
+        "--knowledge-dir", default="knowledge",
+        help="Directory for per-run Markdown knowledge base files",
+    )
+    parser.add_argument(
+        "--knowledge-file", default=None,
+        help="Write the run knowledge base to a specific Markdown file",
+    )
+    parser.add_argument(
+        "--no-knowledge-base", action="store_true",
+        help="Disable the per-run Markdown knowledge base file",
+    )
+    parser.add_argument(
         "--whisper-model", default="large-v3",
         help="faster-whisper model size (e.g. tiny, base, medium, large-v3)",
     )
@@ -245,6 +300,9 @@ def main() -> None:
         screenshot_interval=args.interval,
         max_iterations=args.max_iterations,
         whisper_model_size=args.whisper_model,
+        save_knowledge_base=not args.no_knowledge_base,
+        knowledge_base_dir=args.knowledge_dir,
+        knowledge_base_file=args.knowledge_file,
     )
 
     asyncio.run(run(args.url, config))

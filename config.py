@@ -37,6 +37,11 @@ class Config:
     max_recent_frames_in_summary: int = 5
     max_recent_transcripts_in_summary: int = 3
 
+    # Knowledge base output
+    save_knowledge_base: bool = True
+    knowledge_base_dir: str = "knowledge"
+    knowledge_base_file: str | None = None
+
     # Orchestration
     max_iterations: int = 500            # safety stop
     post_quiz_wait: float = 2.0          # seconds to wait after submitting an answer

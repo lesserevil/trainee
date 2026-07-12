@@ -77,6 +77,10 @@ The browser opens with a persistent profile in `.browser-profile`. Log in,
 accept any terms, navigate to the start of the course, then press Enter in the
 terminal when you want `trainee` to begin watching.
 
+Each run writes a live Markdown knowledge base under `knowledge/`. The file is
+updated as frames and audio transcripts are captured, so you can inspect it
+during periodic quizzes and review it after the run.
+
 ## Usage
 
 ```bash
@@ -92,6 +96,10 @@ python trainee.py --url "https://example.com/course/module1" \
 
 # Diagnostic visual-only run
 python trainee.py --url "https://example.com/course/module1" --no-audio
+
+# Write the knowledge base to a specific file
+python trainee.py --url "https://example.com/course/module1" \
+  --knowledge-file knowledge/compliance-course.md
 ```
 
 `--no-audio` is useful for checking browser automation or model setup, but it is
@@ -112,7 +120,29 @@ agent uses to answer quizzes.
 | `--whisper-model` | `large-v3` | faster-whisper model size |
 | `--headless` | `False` | Run browser in headless mode |
 | `--max-iterations` | `500` | Safety limit on main loop iterations |
+| `--knowledge-dir` | `knowledge` | Directory for per-run Markdown knowledge base files |
+| `--knowledge-file` | unset | Write the run knowledge base to a specific Markdown file |
+| `--no-knowledge-base` | `False` | Disable Markdown knowledge base output |
 | `--no-audio` | `False` | Diagnostic mode that disables required audio capture |
+
+## Knowledge Base Output
+
+By default, each run creates a timestamped Markdown file:
+
+```text
+knowledge/trainee-YYYYMMDD-HHMMSSZ.md
+```
+
+The file is updated throughout the run. It includes:
+
+- run metadata, including URL, model backend, model ID, and status
+- the current quiz context that `trainee` sends to the model
+- the compressed course summary
+- recent uncompressed visual notes and audio transcript chunks
+- appendices with all captured visual notes and audio transcript segments
+
+Generated knowledge base files are ignored by git. They are intended as local
+run artifacts for live inspection and post-run review.
 
 ## Local Backends
 

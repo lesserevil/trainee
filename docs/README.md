@@ -17,6 +17,10 @@ build.nvidia.com in `BUILD_NVIDIA_COM_API_TOKEN`.
 Audio capture is a required part of normal operation. The documented audio path
 uses BlackHole 2ch and a macOS Multi-Output Device.
 
+Each run writes a live Markdown knowledge base under `knowledge/` by default.
+That generated directory is ignored by git and is meant for live quiz inspection
+and post-run review.
+
 Use `--no-audio` only for diagnostic visual-only runs, such as checking
 Playwright browser startup or model loading before completing audio setup.
 
