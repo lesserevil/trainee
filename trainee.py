@@ -257,6 +257,10 @@ def main() -> None:
         help="Run browser in headless mode (may break some LMS platforms)",
     )
     parser.add_argument(
+        "--no-microsoft-sso", action="store_true",
+        help="Do not configure Microsoft SSO in trainee's browser profile",
+    )
+    parser.add_argument(
         "--interval", type=float, default=3.0,
         help="Screenshot interval in seconds during content watching",
     )
@@ -297,6 +301,7 @@ def main() -> None:
         nvidia_max_tokens=args.api_max_tokens,
         use_audio=not args.no_audio,
         headless=args.headless,
+        enable_microsoft_sso=not args.no_microsoft_sso,
         screenshot_interval=args.interval,
         max_iterations=args.max_iterations,
         whisper_model_size=args.whisper_model,

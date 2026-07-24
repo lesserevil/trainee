@@ -62,9 +62,12 @@ source .venv/bin/activate
 trainee --url "https://example.com/course/module1"
 ```
 
-The browser opens with a persistent profile in `.browser-profile`. Log in,
-accept any terms, navigate to the start of the course, then press Enter in the
-terminal when you want `trainee` to begin watching.
+The browser opens with a persistent profile in `.browser-profile`. On a managed
+Mac with Company Portal installed, `trainee` downloads the Microsoft Single
+Sign On extension from the Chrome Web Store into that profile and connects it
+to the Company Portal browser broker. Log in, accept any terms, navigate to the
+start of the course, then press Enter in the terminal when you want `trainee`
+to begin watching.
 
 The first time native capture starts, macOS asks whether `trainee Audio Capture`
 may record system audio. Allow it to continue. This is the only manual audio
@@ -112,6 +115,7 @@ agent uses to answer quizzes.
 | `--interval` | `3.0` | Screenshot interval in seconds |
 | `--whisper-model` | `large-v3` | faster-whisper model size |
 | `--headless` | `False` | Run browser in headless mode |
+| `--no-microsoft-sso` | `False` | Disable Microsoft SSO extension setup |
 | `--max-iterations` | `500` | Safety limit on main loop iterations |
 | `--knowledge-dir` | `knowledge` | Directory for per-run Markdown knowledge base files |
 | `--knowledge-file` | unset | Write the run knowledge base to a specific Markdown file |
@@ -242,6 +246,19 @@ profile:
 ```bash
 rm -rf .browser-profile
 ```
+
+### Microsoft SSO Is Unavailable
+
+On macOS, `trainee` configures its dedicated browser profile with Microsoft's
+Chrome SSO extension. This requires:
+
+- Microsoft Company Portal and its BrowserCore native messaging host
+- A managed Mac registered for Microsoft Platform SSO
+
+When those prerequisites are present, the extension is downloaded from the
+Chrome Web Store on browser startup and loaded into Playwright Chromium. If the
+prerequisites are missing, `trainee` prints a warning and continues without
+Microsoft SSO.
 
 ## Project Structure
 

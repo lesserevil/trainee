@@ -22,6 +22,7 @@ class Config:
     browser_viewport_width: int = 1280
     browser_viewport_height: int = 800
     browser_profile_dir: str = ".browser-profile"  # persists cookies/SSO across runs
+    enable_microsoft_sso: bool = True
 
     # Content capture
     screenshot_interval: float = 3.0     # seconds between frame captures
