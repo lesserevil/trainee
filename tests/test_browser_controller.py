@@ -94,7 +94,7 @@ class MicrosoftSsoProfileTest(unittest.TestCase):
 class BrowserControllerLaunchTest(unittest.IsolatedAsyncioTestCase):
     @patch("browser.controller.prepare_microsoft_sso_profile")
     @patch("browser.controller.async_playwright")
-    async def test_loads_sso_extension_in_playwright_chromium(
+    async def test_loads_sso_extension_in_system_chrome(
         self,
         playwright_factory: Mock,
         prepare_sso: Mock,
@@ -124,7 +124,7 @@ class BrowserControllerLaunchTest(unittest.IsolatedAsyncioTestCase):
             await controller.start("https://example.com")
 
         launch_options = chromium.launch_persistent_context.await_args.kwargs
-        self.assertEqual(launch_options["channel"], "chromium")
+        self.assertEqual(launch_options["channel"], "chrome")
         self.assertEqual(
             launch_options["ignore_default_args"],
             ["--disable-extensions"],

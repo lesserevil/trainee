@@ -252,13 +252,15 @@ rm -rf .browser-profile
 On macOS, `trainee` configures its dedicated browser profile with Microsoft's
 Chrome SSO extension. This requires:
 
+- Google Chrome
 - Microsoft Company Portal and its BrowserCore native messaging host
 - A managed Mac registered for Microsoft Platform SSO
 
 When those prerequisites are present, the extension is downloaded from the
-Chrome Web Store on browser startup and loaded into Playwright Chromium. If the
-prerequisites are missing, `trainee` prints a warning and continues without
-Microsoft SSO.
+Chrome Web Store on browser startup and loaded into the installed Google Chrome
+browser through Playwright. The bundled Playwright Chromium build is still used
+when Microsoft SSO is not configured. If the prerequisites are missing,
+`trainee` prints a warning and continues without Microsoft SSO.
 
 ## Project Structure
 

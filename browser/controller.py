@@ -212,8 +212,11 @@ class BrowserController:
                     f"--load-extension={extension_dir}",
                 ]
             )
+            # The BrowserCore-backed SSO extension stalls SAML form submission
+            # in Playwright's bundled Chromium. Use the installed Chrome build,
+            # which is also the browser targeted by the native host manifest.
             launch_options = {
-                "channel": "chromium",
+                "channel": "chrome",
                 "ignore_default_args": ["--disable-extensions"],
             }
 
