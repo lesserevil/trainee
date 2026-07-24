@@ -35,26 +35,29 @@ Python 3.12 because that is the path this project is exercised against.
 
 ## Quick Start
 
-Run these commands from a fresh checkout:
+From a fresh checkout, run:
 
 ```bash
-uv venv --python 3.12
-source .venv/bin/activate
-uv pip install -e ".[audio]"
-playwright install chromium
+make setup
 ```
 
-Create an API key at [build.nvidia.com](https://build.nvidia.com), then export
-it:
+The setup target creates a Python 3.12 virtual environment, installs `trainee`
+with audio support, installs Playwright Chromium, and installs BlackHole 2ch on
+macOS when Homebrew is available. It is safe to run again when refreshing an
+existing checkout.
+
+At the end, it prints the remaining manual steps. Create an API key at
+[build.nvidia.com](https://build.nvidia.com), then export it:
 
 ```bash
 export BUILD_NVIDIA_COM_API_TOKEN="nvapi-..."
 ```
 
-Install BlackHole:
+If setup could not install BlackHole because Homebrew was unavailable, install
+it after installing Homebrew:
 
 ```bash
-brew install blackhole-2ch
+brew install --cask blackhole-2ch
 ```
 
 Then configure macOS audio:
@@ -70,7 +73,8 @@ Then configure macOS audio:
 Start a course:
 
 ```bash
-python trainee.py --url "https://example.com/course/module1"
+source .venv/bin/activate
+trainee --url "https://example.com/course/module1"
 ```
 
 The browser opens with a persistent profile in `.browser-profile`. Log in,

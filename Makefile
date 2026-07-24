@@ -7,7 +7,9 @@
 
 .DEFAULT_GOAL := help
 
-.PHONY: help init fmt fmt-check build test lint clean
+.PHONY: help init setup fmt fmt-check build test lint clean
+
+PYTHON := $(if $(wildcard .venv/bin/python),.venv/bin/python,python3)
 
 help: ## Show this help.
 	@awk 'BEGIN {FS = ":.*?## "; printf "Usage: make <target>\n\nTargets:\n"} \
@@ -29,6 +31,9 @@ init: ## Initialize local repo prerequisites.
 		echo "       uv tool install git+https://github.com/lesserevil/oompah"; \
 	fi
 
+setup: init ## Install trainee and its browser/audio prerequisites.
+	@sh scripts/setup.sh
+
 fmt: ## Format all source files in place.
 	@echo "fmt: not yet configured - edit Makefile" && exit 1
 
@@ -39,7 +44,7 @@ build: ## Build the project.
 	@echo "build: not yet configured - edit Makefile" && exit 1
 
 test: ## Run the test suite.
-	@echo "test: not yet configured - edit Makefile" && exit 1
+	@$(PYTHON) -m unittest discover -s tests -p 'test_*.py'
 
 lint: ## Run static analysis / linters.
 	@echo "lint: not yet configured - edit Makefile" && exit 1
