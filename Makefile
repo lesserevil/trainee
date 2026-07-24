@@ -31,7 +31,7 @@ init: ## Initialize local repo prerequisites.
 		echo "       uv tool install git+https://github.com/lesserevil/oompah"; \
 	fi
 
-setup: init ## Install trainee and its browser/audio prerequisites.
+setup: init ## Install trainee, browser/audio prerequisites, and required models.
 	@sh scripts/setup.sh
 
 fmt: ## Format all source files in place.

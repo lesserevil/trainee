@@ -4,32 +4,38 @@ from __future__ import annotations
 
 import numpy as np
 
+from config import DEFAULT_WHISPER_MODEL_SIZE
+
 
 class Transcriber:
-    """Lazy-loads a faster-whisper WhisperModel on first use."""
+    """Load a pre-downloaded faster-whisper model for transcription."""
 
-    _model = None
-
-    def __init__(self, model_size: str = "large-v3") -> None:
+    def __init__(self, model_size: str = DEFAULT_WHISPER_MODEL_SIZE) -> None:
         self._model_size = model_size
+        from faster_whisper import WhisperModel
+        from faster_whisper.utils import download_model
 
-    def _get_model(self):
-        if Transcriber._model is None:
-            from faster_whisper import WhisperModel  # lazy import
-
-            print(f"[transcriber] Loading Whisper {self._model_size}...")
-            Transcriber._model = WhisperModel(
+        print(f"[transcriber] Loading cached Whisper {self._model_size}...")
+        try:
+            model_path = download_model(
                 self._model_size,
-                device="auto",
-                compute_type="auto",
+                local_files_only=True,
             )
-            print("[transcriber] Whisper loaded.")
-        return Transcriber._model
+        except Exception as error:
+            raise RuntimeError(
+                f"Whisper {self._model_size} is not installed locally. "
+                "Run `make setup` before starting trainee."
+            ) from error
+        self._model = WhisperModel(
+            model_path,
+            device="auto",
+            compute_type="auto",
+        )
+        print("[transcriber] Whisper loaded.")
 
     def transcribe_chunk(self, audio_chunk: np.ndarray) -> str:
         """Transcribe a float32 numpy audio array sampled at 16 kHz."""
-        model = self._get_model()
-        segments, _ = model.transcribe(
+        segments, _ = self._model.transcribe(
             audio_chunk,
             beam_size=5,
             language="en",

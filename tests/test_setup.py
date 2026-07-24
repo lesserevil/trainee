@@ -74,6 +74,7 @@ fi
         self.assertIn(
             "uv pip install --python .venv/bin/python -e .[audio]", commands
         )
+        self.assertIn("python scripts/download_models.py", commands)
         self.assertIn("python -m playwright install chromium", commands)
         self.assertIn("audio-helper build", commands)
         self.assertIn("export BUILD_NVIDIA_COM_API_TOKEN=", result.stdout)

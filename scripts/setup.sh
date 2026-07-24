@@ -28,6 +28,9 @@ fi
 say "[setup] Installing trainee with audio support"
 uv pip install --python .venv/bin/python -e ".[audio]"
 
+say "[setup] Downloading required local models"
+.venv/bin/python scripts/download_models.py
+
 say "[setup] Installing Playwright Chromium"
 .venv/bin/python -m playwright install chromium
 

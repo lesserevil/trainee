@@ -4,6 +4,7 @@ from dataclasses import dataclass
 DEFAULT_MODEL_ID = "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
 DEFAULT_NVIDIA_API_BASE_URL = "https://integrate.api.nvidia.com/v1"
 DEFAULT_NVIDIA_API_KEY_ENV = "BUILD_NVIDIA_COM_API_TOKEN"
+DEFAULT_WHISPER_MODEL_SIZE = "large-v3"
 
 
 @dataclass
@@ -30,7 +31,7 @@ class Config:
 
     # Audio (required for normal operation; --no-audio is diagnostic only)
     use_audio: bool = True
-    whisper_model_size: str = "large-v3"
+    whisper_model_size: str = DEFAULT_WHISPER_MODEL_SIZE
     audio_chunk_seconds: int = 8
 
     # Context / accumulation

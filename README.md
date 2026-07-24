@@ -44,9 +44,20 @@ make setup
 ```
 
 The setup target creates a Python 3.12 virtual environment, installs `trainee`
-with audio support, installs Playwright Chromium, and builds the native macOS
-audio-capture helper. It is safe to run again when refreshing an existing
-checkout.
+with audio support, downloads the default faster-whisper `large-v3` model,
+installs Playwright Chromium, and builds the native macOS audio-capture helper.
+The model download can take several minutes. It is safe to run setup again when
+refreshing an existing checkout; completed model files are reused from the
+Hugging Face cache.
+
+The Whisper repository is public, so setup can download it without a Hugging
+Face account. Setting `HF_TOKEN` before running setup enables authenticated
+downloads with higher rate limits:
+
+```bash
+export HF_TOKEN="hf_..."
+make setup
+```
 
 At the end, it prints the remaining manual steps. Create an API key at
 [build.nvidia.com](https://build.nvidia.com), then export it:
@@ -113,7 +124,7 @@ agent uses to answer quizzes.
 | `--api-key-env` | `BUILD_NVIDIA_COM_API_TOKEN` | Environment variable containing the NVIDIA API key |
 | `--api-max-tokens` | `1024` | Maximum response tokens for hosted model calls |
 | `--interval` | `3.0` | Screenshot interval in seconds |
-| `--whisper-model` | `large-v3` | faster-whisper model size |
+| `--whisper-model` | `large-v3` | Pre-downloaded faster-whisper model size |
 | `--headless` | `False` | Run browser in headless mode |
 | `--no-microsoft-sso` | `False` | Disable Microsoft SSO extension setup |
 | `--max-iterations` | `500` | Safety limit on main loop iterations |
@@ -179,6 +190,23 @@ uses vLLM, Apple Silicon uses MLX, and other machines fall back to vLLM.
 7. Advances through slides and pages as content completes.
 
 ## Troubleshooting
+
+### Whisper Model Is Missing
+
+Normal runtime model loading is cache-only and does not download from Hugging
+Face. Run setup to download the required default `large-v3` model:
+
+```bash
+make setup
+```
+
+If you select a different `--whisper-model`, download it before starting
+`trainee`:
+
+```bash
+.venv/bin/python -c \
+  'from faster_whisper.utils import download_model; download_model("medium")'
+```
 
 ### NVIDIA API Key Is Missing
 

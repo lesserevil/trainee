@@ -25,6 +25,7 @@ from config import (
     DEFAULT_MODEL_ID,
     DEFAULT_NVIDIA_API_BASE_URL,
     DEFAULT_NVIDIA_API_KEY_ENV,
+    DEFAULT_WHISPER_MODEL_SIZE,
 )
 from content.watcher import capture_content_frame, is_content_active
 from content.audio_capture import check_audio_setup
@@ -58,7 +59,25 @@ async def run(url: str, config: Config) -> None:
     if config.use_audio:
         check_audio_setup()
 
-    # 1. Load VLM (blocking, runs in the current thread before we start async work)
+    # 1. Load required local audio components before starting browser work.
+    audio_capture = None
+    transcriber = None
+    if config.use_audio:
+        from content.audio_capture import AudioCapture
+        from content.transcriber import Transcriber
+
+        try:
+            audio_capture = AudioCapture(chunk_seconds=config.audio_chunk_seconds)
+            transcriber = Transcriber(model_size=config.whisper_model_size)
+        except RuntimeError as e:
+            print(f"[audio] ERROR: {e}")
+            print(
+                "[audio] Audio capture is required for normal operation. "
+                "Fix audio setup or use --no-audio only for diagnostics."
+            )
+            raise
+
+    # 2. Load VLM (blocking, runs in the current thread before we start async work)
     vlm = VisionModel.get(
         model_id=config.model_id,
         max_model_len=config.max_model_len,
@@ -69,7 +88,7 @@ async def run(url: str, config: Config) -> None:
         nvidia_max_tokens=config.nvidia_max_tokens,
     )
 
-    # 2. Start browser
+    # 3. Start browser
     browser = BrowserController(config)
     await browser.start(url)
 
@@ -82,16 +101,9 @@ async def run(url: str, config: Config) -> None:
     await loop.run_in_executor(None, input, "  > Press Enter to start... ")
     print()
 
-    # 3. Required audio capture, unless explicitly disabled for diagnostics.
-    audio_capture = None
-    transcriber = None
-    if config.use_audio:
-        from content.audio_capture import AudioCapture
-        from content.transcriber import Transcriber
-
+    # 4. Start required audio capture, unless disabled for diagnostics.
+    if audio_capture is not None:
         try:
-            audio_capture = AudioCapture(chunk_seconds=config.audio_chunk_seconds)
-            transcriber = Transcriber(model_size=config.whisper_model_size)
             audio_capture.start()
         except RuntimeError as e:
             print(f"[audio] ERROR: {e}")
@@ -101,7 +113,7 @@ async def run(url: str, config: Config) -> None:
             )
             raise
 
-    # 4. Context accumulator and live Markdown knowledge base
+    # 5. Context accumulator and live Markdown knowledge base
     knowledge_base_path = _default_knowledge_base_path(config)
     accumulator = ContextAccumulator(
         vlm,
@@ -281,7 +293,7 @@ def main() -> None:
         help="Disable the per-run Markdown knowledge base file",
     )
     parser.add_argument(
-        "--whisper-model", default="large-v3",
+        "--whisper-model", default=DEFAULT_WHISPER_MODEL_SIZE,
         help="faster-whisper model size (e.g. tiny, base, medium, large-v3)",
     )
     parser.add_argument(
