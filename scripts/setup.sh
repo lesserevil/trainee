@@ -32,28 +32,10 @@ say "[setup] Installing Playwright Chromium"
 .venv/bin/python -m playwright install chromium
 
 platform=$(uname -s)
-blackhole_ready=false
 
 if [ "$platform" = "Darwin" ]; then
-    if command -v system_profiler >/dev/null 2>&1 \
-        && system_profiler SPAudioDataType 2>/dev/null \
-        | grep -Fq "BlackHole 2ch"; then
-        blackhole_ready=true
-    elif command -v brew >/dev/null 2>&1 \
-        && brew list --cask blackhole-2ch >/dev/null 2>&1; then
-        blackhole_ready=true
-    fi
-
-    if [ "$blackhole_ready" = true ]; then
-        say "[setup] BlackHole 2ch is already installed"
-    elif command -v brew >/dev/null 2>&1; then
-        say "[setup] Installing BlackHole 2ch"
-        HOMEBREW_NO_AUTO_UPDATE=1 NONINTERACTIVE=1 \
-            brew install --cask blackhole-2ch
-        blackhole_ready=true
-    else
-        say "[setup] Homebrew is not installed; BlackHole requires manual installation"
-    fi
+    say "[setup] Building native macOS system audio capture"
+    sh scripts/build_audio_helper.sh
 fi
 
 say ""
@@ -69,17 +51,11 @@ else
 fi
 
 if [ "$platform" = "Darwin" ]; then
-    if [ "$blackhole_ready" = false ]; then
-        say "  2. Install Homebrew, then install BlackHole:"
-        say "       brew install --cask blackhole-2ch"
-    else
-        say "  2. Open Audio MIDI Setup and create a Multi-Output Device:"
-        say "       - Select BlackHole 2ch and your speakers or headphones."
-        say "       - Enable Drift Correction for BlackHole 2ch only."
-        say "       - Select the Multi-Output Device in System Settings > Sound > Output."
-    fi
+    say "  2. On the first course run, allow trainee Audio Capture"
+    say "     to record system audio when macOS asks."
+    say "     Your current speakers or headphones stay selected."
 else
-    say "  2. Audio capture currently requires macOS and the BlackHole 2ch device."
+    say "  2. Native system audio capture requires macOS 14.2 or newer."
     say "     Use --no-audio for a visual-only diagnostic run on this platform."
 fi
 

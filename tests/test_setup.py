@@ -24,6 +24,11 @@ class SetupScriptTest(unittest.TestCase):
         self.bin_dir = self.root / "bin"
         self.bin_dir.mkdir()
         self.command_log = self.root / "commands.log"
+        (self.root / "scripts" / "build_audio_helper.sh").write_text(
+            "#!/bin/sh\n"
+            "printf 'audio-helper build\\n' >> \"$COMMAND_LOG\"\n",
+            encoding="utf-8",
+        )
         self._write_command(
             "uv",
             """\
@@ -60,18 +65,7 @@ fi
             text=True,
         )
 
-    def test_installs_python_dependencies_browser_and_blackhole(self) -> None:
-        self._write_command("system_profiler", "exit 1\n")
-        self._write_command(
-            "brew",
-            """\
-printf 'brew %s\\n' "$*" >> "$COMMAND_LOG"
-if [ "$1" = "list" ]; then
-    exit 1
-fi
-""",
-        )
-
+    def test_installs_python_dependencies_browser_and_audio_helper(self) -> None:
         result = self._run_setup()
 
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -81,11 +75,12 @@ fi
             "uv pip install --python .venv/bin/python -e .[audio]", commands
         )
         self.assertIn("python -m playwright install chromium", commands)
-        self.assertIn("brew install --cask blackhole-2ch", commands)
+        self.assertIn("audio-helper build", commands)
         self.assertIn("export BUILD_NVIDIA_COM_API_TOKEN=", result.stdout)
-        self.assertIn("Open Audio MIDI Setup", result.stdout)
+        self.assertIn("allow trainee Audio Capture", result.stdout)
+        self.assertNotIn("BlackHole", result.stdout)
 
-    def test_reuses_existing_environment_and_blackhole_installation(self) -> None:
+    def test_reuses_existing_environment_and_rebuilds_audio_helper(self) -> None:
         python = self.root / ".venv" / "bin" / "python"
         python.parent.mkdir(parents=True)
         python.write_text(
@@ -93,7 +88,6 @@ fi
             encoding="utf-8",
         )
         python.chmod(python.stat().st_mode | stat.S_IXUSR)
-        self._write_command("system_profiler", "printf 'BlackHole 2ch\\n'\n")
 
         result = self._run_setup()
 
@@ -101,8 +95,8 @@ fi
         commands = self.command_log.read_text(encoding="utf-8")
         self.assertNotIn("uv venv", commands)
         self.assertIn("Python environment already exists", result.stdout)
-        self.assertIn("BlackHole 2ch is already installed", result.stdout)
-        self.assertIn("Open Audio MIDI Setup", result.stdout)
+        self.assertIn("audio-helper build", commands)
+        self.assertIn("allow trainee Audio Capture", result.stdout)
 
 
 if __name__ == "__main__":

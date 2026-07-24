@@ -40,8 +40,10 @@ fmt: ## Format all source files in place.
 fmt-check: ## Check formatting without modifying files.
 	@echo "fmt-check: not yet configured - edit Makefile" && exit 1
 
-build: ## Build the project.
-	@echo "build: not yet configured - edit Makefile" && exit 1
+build: ## Build the native audio helper and check Python bytecode compilation.
+	@sh scripts/build_audio_helper.sh
+	@$(PYTHON) -m compileall -q \
+		browser content context model quiz config.py trainee.py
 
 test: ## Run the test suite.
 	@$(PYTHON) -m unittest discover -s tests -p 'test_*.py'
@@ -50,4 +52,4 @@ lint: ## Run static analysis / linters.
 	@echo "lint: not yet configured - edit Makefile" && exit 1
 
 clean: ## Remove build artifacts.
-	@echo "clean: not yet configured - edit Makefile" && exit 1
+	@rm -rf .build

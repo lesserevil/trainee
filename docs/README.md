@@ -14,8 +14,13 @@ The default model backend is NVIDIA's hosted API at
 `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning`. Users need an API key from
 build.nvidia.com in `BUILD_NVIDIA_COM_API_TOKEN`.
 
-Audio capture is a required part of normal operation. The documented audio path
-uses BlackHole 2ch and a macOS Multi-Output Device.
+Audio capture is a required part of normal operation. On macOS 14.2 or newer,
+`trainee` uses a native Core Audio process tap. It does not require BlackHole,
+a Multi-Output Device, or changing the selected sound output.
+
+The first capture run displays macOS's system-audio recording permission prompt
+for `trainee Audio Capture`. The user must allow it before narration can be
+captured.
 
 Each run writes a live Markdown knowledge base under `knowledge/` by default.
 That generated directory is ignored by git and is meant for live quiz inspection

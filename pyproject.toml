@@ -32,7 +32,6 @@ vllm = [
 # Audio transcription extra (required for normal operation)
 audio = [
     "faster-whisper>=1.0.0",
-    "sounddevice>=0.5.0",
 ]
 # Install everything
 all = [

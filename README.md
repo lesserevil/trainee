@@ -21,14 +21,16 @@ Set it in the environment as `BUILD_NVIDIA_COM_API_TOKEN` before running `traine
 
 The intended setup is:
 
+- macOS 14.2 or newer
 - Python 3.12 with [uv](https://github.com/astral-sh/uv)
+- Xcode Command Line Tools
 - An NVIDIA API key in `BUILD_NVIDIA_COM_API_TOKEN`
 - Playwright Chromium
-- BlackHole 2ch configured as a system-audio capture device
 
 The default model runs through NVIDIA's hosted API, so no local GPU is required
-for model inference. The current audio capture implementation still expects the
-macOS BlackHole device named `BlackHole 2ch`.
+for model inference. System audio is captured with a private native Core Audio
+process tap. Your selected speakers or headphones continue to work normally;
+no virtual audio driver or Multi-Output Device is required.
 
 Python `>=3.10` is allowed by package metadata, but the documented setup uses
 Python 3.12 because that is the path this project is exercised against.
@@ -42,9 +44,9 @@ make setup
 ```
 
 The setup target creates a Python 3.12 virtual environment, installs `trainee`
-with audio support, installs Playwright Chromium, and installs BlackHole 2ch on
-macOS when Homebrew is available. It is safe to run again when refreshing an
-existing checkout.
+with audio support, installs Playwright Chromium, and builds the native macOS
+audio-capture helper. It is safe to run again when refreshing an existing
+checkout.
 
 At the end, it prints the remaining manual steps. Create an API key at
 [build.nvidia.com](https://build.nvidia.com), then export it:
@@ -52,23 +54,6 @@ At the end, it prints the remaining manual steps. Create an API key at
 ```bash
 export BUILD_NVIDIA_COM_API_TOKEN="nvapi-..."
 ```
-
-If setup could not install BlackHole because Homebrew was unavailable, install
-it after installing Homebrew:
-
-```bash
-brew install --cask blackhole-2ch
-```
-
-Then configure macOS audio:
-
-1. Open **Audio MIDI Setup**.
-2. Click **+** and choose **Create Multi-Output Device**.
-3. Check **BlackHole 2ch** and your normal speakers or headphones.
-4. Enable **Drift Correction** for **BlackHole 2ch** only.
-5. Rename the device to something recognizable, such as `trainee Multi-Output`.
-6. Open **System Settings > Sound > Output** and select that Multi-Output
-   Device.
 
 Start a course:
 
@@ -80,6 +65,10 @@ trainee --url "https://example.com/course/module1"
 The browser opens with a persistent profile in `.browser-profile`. Log in,
 accept any terms, navigate to the start of the course, then press Enter in the
 terminal when you want `trainee` to begin watching.
+
+The first time native capture starts, macOS asks whether `trainee Audio Capture`
+may record system audio. Allow it to continue. This is the only manual audio
+setup step.
 
 Each run writes a live Markdown knowledge base under `knowledge/`. The file is
 updated as frames and audio transcripts are captured, so you can inspect it
@@ -205,29 +194,22 @@ python trainee.py --url "https://example.com/course/module1" \
 
 ### Audio Setup Is Incomplete
 
-`trainee` checks audio before loading the model. If it reports missing
-BlackHole or a missing Multi-Output Device, complete the BlackHole setup above
-and make the Multi-Output Device your current macOS output device.
+Native system audio capture requires macOS 14.2 or newer. If `trainee` reports
+that its helper is missing, rebuild it:
+
+```bash
+make build
+```
+
+If capture starts but course narration is silent, open **System Settings >
+Privacy & Security**, enable system-audio recording for `trainee Audio Capture`,
+then restart `trainee`. The exact privacy-panel name varies slightly by macOS
+release.
 
 For a visual-only diagnostic run:
 
 ```bash
 python trainee.py --url "https://example.com/course/module1" --no-audio
-```
-
-### `sounddevice` Is Missing
-
-Install the audio extra:
-
-```bash
-uv pip install -e ".[audio]"
-```
-
-For local backends, keep the matching backend extra:
-
-```bash
-uv pip install -e ".[mlx,audio]"
-uv pip install -e ".[vllm,audio]"
 ```
 
 ### Chromium Is Missing
@@ -269,6 +251,7 @@ trainee/
 ├── config.py            # Configuration dataclass
 ├── browser/             # Playwright browser control, navigation, screenshots
 ├── content/             # Screenshot watching, audio capture, transcription
+├── native/              # Core Audio process-tap helper
 ├── model/               # Vision-language model interface and prompts
 ├── quiz/                # Quiz detection, extraction, and answering
 └── context/             # Rolling context accumulator
