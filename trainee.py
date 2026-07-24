@@ -294,7 +294,10 @@ def main() -> None:
     )
     parser.add_argument(
         "--whisper-model", default=DEFAULT_WHISPER_MODEL_SIZE,
-        help="faster-whisper model size (e.g. tiny, base, medium, large-v3)",
+        help=(
+            "Whisper model size for automatic MLX/faster-whisper "
+            "transcription (default: small)"
+        ),
     )
     parser.add_argument(
         "--backend", default="nvidia", choices=["nvidia", "auto", "vllm", "mlx"],

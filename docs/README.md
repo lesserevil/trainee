@@ -18,9 +18,11 @@ Audio capture is a required part of normal operation. On macOS 14.2 or newer,
 `trainee` uses a native Core Audio process tap. It does not require BlackHole,
 a Multi-Output Device, or changing the selected sound output.
 
-`make setup` downloads the default faster-whisper `large-v3` model. Runtime
-transcription uses only the local Hugging Face cache and does not lazily
-download model files.
+`make setup` downloads the default Whisper `small` model. On Apple Silicon it
+caches both MLX and faster-whisper formats; other systems cache the portable
+faster-whisper format. Runtime automatically prefers MLX when available, loads
+only from the local Hugging Face cache, and warms the model before audio capture
+starts.
 
 The first capture run displays macOS's system-audio recording permission prompt
 for `trainee Audio Capture`. The user must allow it before narration can be

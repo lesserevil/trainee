@@ -4,7 +4,7 @@ from dataclasses import dataclass
 DEFAULT_MODEL_ID = "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
 DEFAULT_NVIDIA_API_BASE_URL = "https://integrate.api.nvidia.com/v1"
 DEFAULT_NVIDIA_API_KEY_ENV = "BUILD_NVIDIA_COM_API_TOKEN"
-DEFAULT_WHISPER_MODEL_SIZE = "large-v3"
+DEFAULT_WHISPER_MODEL_SIZE = "small"
 
 
 @dataclass

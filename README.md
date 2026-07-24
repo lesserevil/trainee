@@ -44,11 +44,12 @@ make setup
 ```
 
 The setup target creates a Python 3.12 virtual environment, installs `trainee`
-with audio support, downloads the default faster-whisper `large-v3` model,
-installs Playwright Chromium, and builds the native macOS audio-capture helper.
-The model download can take several minutes. It is safe to run setup again when
-refreshing an existing checkout; completed model files are reused from the
-Hugging Face cache.
+with audio support, downloads the default Whisper `small` model, installs
+Playwright Chromium, and builds the native macOS audio-capture helper. On Apple
+Silicon, setup caches both the MLX and faster-whisper model formats so runtime
+autodetection never needs to download weights. The model download can take
+several minutes. It is safe to run setup again when refreshing an existing
+checkout; completed model files are reused from the Hugging Face cache.
 
 The Whisper repository is public, so setup can download it without a Hugging
 Face account. Setting `HF_TOKEN` before running setup enables authenticated
@@ -124,7 +125,7 @@ agent uses to answer quizzes.
 | `--api-key-env` | `BUILD_NVIDIA_COM_API_TOKEN` | Environment variable containing the NVIDIA API key |
 | `--api-max-tokens` | `1024` | Maximum response tokens for hosted model calls |
 | `--interval` | `3.0` | Screenshot interval in seconds |
-| `--whisper-model` | `large-v3` | Pre-downloaded faster-whisper model size |
+| `--whisper-model` | `small` | Pre-downloaded Whisper model size |
 | `--headless` | `False` | Run browser in headless mode |
 | `--no-microsoft-sso` | `False` | Disable Microsoft SSO extension setup |
 | `--max-iterations` | `500` | Safety limit on main loop iterations |
@@ -183,7 +184,8 @@ uses vLLM, Apple Silicon uses MLX, and other machines fall back to vLLM.
 1. Opens Chromium with a persistent browser profile.
 2. Waits for you to log in and navigate to the course.
 3. Captures screenshots and system audio while course content plays.
-4. Transcribes audio with faster-whisper.
+4. Transcribes audio with MLX Whisper on supported Apple Silicon systems,
+   otherwise with faster-whisper.
 5. Builds a rolling summary using the configured VLM.
 6. Detects quizzes, extracts the prompt and options, and answers from the
    accumulated context.
@@ -194,19 +196,27 @@ uses vLLM, Apple Silicon uses MLX, and other machines fall back to vLLM.
 ### Whisper Model Is Missing
 
 Normal runtime model loading is cache-only and does not download from Hugging
-Face. Run setup to download the required default `large-v3` model:
+Face. Run setup to download the required default `small` model formats:
 
 ```bash
 make setup
 ```
 
-If you select a different `--whisper-model`, download it before starting
-`trainee`:
+If you select a different `--whisper-model`, download the format used by your
+runtime before starting `trainee`. For example, to cache `medium` for both
+automatic backends:
 
 ```bash
 .venv/bin/python -c \
   'from faster_whisper.utils import download_model; download_model("medium")'
+.venv/bin/python -c \
+  'from huggingface_hub import snapshot_download; snapshot_download("mlx-community/whisper-medium-mlx")'
 ```
+
+On Apple Silicon, `trainee` uses MLX Whisper when its runtime is importable and
+the selected model has an MLX mapping. Other systems, unsupported model names,
+and installations without MLX continue to use faster-whisper. Both backends
+load only local model files and finish loading before audio capture starts.
 
 ### NVIDIA API Key Is Missing
 
